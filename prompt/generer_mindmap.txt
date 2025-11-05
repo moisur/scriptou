@@ -1,0 +1,59 @@
+Ton rôle est d'analyser en profondeur la transcription vidéo fournie et de la transformer en une structure de mindmap extrêmement détaillée et logiquement organisée. L'objectif est de capturer l'essence du contenu, y compris les concepts clés, les arguments, les exemples, les données importantes, les conclusions, et toute autre information pertinente, de manière hiérarchique.
+
+Format de Sortie Recommandé (Utilise le Markdown) :
+
+1.  **Titre Principal / Sujet Central (#) :**
+    *   Identifie le sujet global ou le titre le plus représentatif de la vidéo. Formule-le comme un titre de niveau 1 (# Sujet Central).
+
+2.  **Thèmes / Chapitres Majeurs (##) :**
+    *   Décompose le sujet central en ses principaux thèmes, sections logiques, ou étapes chronologiques présentées dans la vidéo. Chacun doit être un titre de niveau 2 (## Thème Majeur).
+    *   Pour chaque thème majeur, essaie d'identifier sa contribution globale au sujet central.
+
+3.  **Idées Clés / Arguments / Points Importants (###) :**
+    *   Au sein de chaque thème majeur, identifie les idées spécifiques, les arguments principaux, les points de discussion essentiels, ou les sous-sections. Chacun doit être un titre de niveau 3 (### Idée Clé).
+
+4.  **Détails de Soutien, Exemples, Explications (Utilise des niveaux de titres Markdown pour la profondeur : ###, ####, #####) :**
+    *   Pour chaque idée clé (précédemment ###), décompose les informations de soutien en utilisant des niveaux de titres Markdown inférieurs (`####`, `#####`, etc.) pour chaque sous-concept ou groupe de détails distincts.
+    *   **ÉVITE les longues listes à puces plates.** Si une liste à puces sous un `###` contient plusieurs idées ou détails complexes, transforme chaque idée ou détail complexe en son propre sous-titre (`####` ou `#####`).
+    *   **Exemple de décomposition souhaitée :**
+        ```markdown
+        ### Idée Principale X
+        #### Sous-Concept A de X
+        - Détail 1 du Sous-Concept A
+        - Détail 2 du Sous-Concept A
+        #### Sous-Concept B de X (si pertinent)
+        - Détail 1 du Sous-Concept B
+        ##### Point Spécifique du Détail 1 de B
+        - Sous-détail
+        ```
+    *   L'objectif est d'utiliser la hiérarchie des titres Markdown (`#`, `##`, `###`, `####`, `#####`, voire `######`) pour représenter la profondeur du mindmap. Les listes à puces (`-`) doivent être utilisées pour les détails les plus fins sous le niveau de titre le plus bas pour un concept donné.
+    *   Inclus et décompose en utilisant des sous-titres (`####`, `#####`) si pertinent :
+        *   **Exemples concrets :** `#### Exemple 1`, `#### Exemple 2`
+        *   **Données chiffrées, statistiques :** `#### Analyse Statistique Clé`
+        *   **Processus ou étapes détaillées :** `#### Étape 1 du Processus`, `#### Étape 2 du Processus` (et sous chaque étape, des `#####` ou des puces).
+        *   **Avantages :** `#### Avantage A`, `#### Avantage B`
+        *   **Inconvénients :** `#### Inconvénient X`, `#### Inconvénient Y`
+    *   La profondeur doit refléter la complexité de l'information. N'hésite pas à descendre à 5, 6 niveaux de titres ou plus si le sujet l'exige.
+    
+5.  **Questions Soulevées (si applicable) :**
+    *   Si la vidéo pose des questions rhétoriques, des problèmes non résolus, ou des interrogations pour le spectateur, note-les clairement, par exemple : "- QUESTION : [Texte de la question]".
+
+6.  **Conclusions (par section et/ou générale) :**
+    *   Si des conclusions intermédiaires sont tirées pour des thèmes majeurs, note-les.
+    *   Identifie la ou les **conclusions générales** de la vidéo, les messages principaux à retenir, ou les appels à l'action finaux. Présente-les idéalement à la fin de la structure du mindmap ou sous un titre dédié comme "## Conclusions et Points Clés".
+
+Directives pour la Génération :
+
+*   **Horodatage Précis :** Pour CHAQUE titre (peu importe le niveau : #, ##, ###, ####, etc.) et CHAQUE point de liste à puces (-), tu DOIS inclure l'horodatage exact (au format `(HH:MM:SS)`) du moment où l'idée est mentionnée dans la transcription. Place l'horodatage à la fin du texte de l'élément. C'est une exigence non négociable.
+    *   Exemple : `### Idée Clé (00:15:32)`
+    *   Exemple : `- Détail important (01:02:11)`
+
+*   **Exhaustivité et Profondeur :** Cherche à extraire un maximum d'informations pertinentes. Ne simplifie pas à l'excès. La hiérarchie doit refléter la complexité du sujet.
+*   **Précision :** Assure-toi que les informations reflètent fidèlement le contenu de la transcription.
+*   **Clarté et Conciseneté :** Formule les points de manière claire, concise, et compréhensible. Utilise un langage simple lorsque possible, tout en conservant la terminologie spécifique si elle est importante.
+*   **Structure Logique :** L'organisation du mindmap (l'ordre des thèmes et des idées) doit suivre le flux logique de la vidéo ou une organisation thématique qui a du sens. Si la vidéo n'a pas une structure très claire, essaie d'en imposer une logiquement.
+*   **Neutralité :** Rapporte les informations telles que présentées dans la transcription, sauf si l'objectif est explicitement d'analyser un biais.
+*   **Adaptabilité :** Cette structure est un guide. Si la vidéo a une nature très spécifique (par exemple, un tutoriel pas à pas, une critique de produit, une narration historique), adapte légèrement la dénomination des sections (par ex., "## Étape X" au lieu de "## Thème Majeur") pour mieux coller au contenu, tout en respectant la hiérarchie Markdown.
+
+Transcription à analyser :
+{transcript}

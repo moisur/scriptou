@@ -1,0 +1,18 @@
+# Fichiers d'environnement
+.env
+.venv
+venv/
+env/
+
+# Fichiers compilés et cache Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Fichiers de configuration d'IDE
+.vscode/
+.idea/
+
+# Base de données locale
+analytics.db

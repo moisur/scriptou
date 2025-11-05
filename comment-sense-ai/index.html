@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scriptou | Mindmap & Analyse de Commentaires YouTube</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --yellow-light: #fed336;
+            --yellow-dark: #f9a622;
+            --blue-light: #40caf9;
+            --blue-dark: #20b0ed;
+            --text-main: #15083e;
+            --text-secondary: #6b6e77;
+            --pink-light: #fd6a5a;
+            --pink-dark: #f65954;
+            --grey-light: #a5b3bc;
+            --grey-dark: #8c9bae;
+            --primary-color: #20b0ed;      /* blue-dark */
+            --primary-color-rgb: 32, 176, 237;
+            --secondary-color: #f9a622;   /* yellow-dark */
+            --accent-color: #fd6a5a;      /* pink-light */
+            --success-color: #4CAF50;
+            --error-color: #f65954;       /* pink-dark */
+            --background-light: #F8F9FA;
+            --background-card: #FFFFFF;
+            --text-dark: #15083e;         /* text-main */
+            --text-medium: #6b6e77;      /* text-secondary */
+            --border-color: #DEE2E6;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-light);
+            color: var(--text-dark);
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.1.1/",
+    "react": "https://esm.sh/react@^19.1.1",
+    "@google/genai": "https://esm.sh/@google/genai@^1.11.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.1/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>

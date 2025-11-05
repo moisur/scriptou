@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analyseur de Transcription et Commentaires YouTube</title>
+    <!-- Markmap Librairies -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script src="https://cdn.jsdelivr.net/npm/markmap-lib@0.15.5/dist/browser/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.15.5/dist/browser/index.min.js"></script>
+    <link rel="stylesheet" href="public/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <img src="public/Scriptou.png" alt="Logo" class="logo"/>
+            <h1>Mindmap Generator</h1>
+            <div class="header-actions">
+                <button id="copyTranscriptButton" class="action-button" onclick="copyToClipboard('transcript')" style="display: none;">Copier Transcript</button>
+                <button id="copyCommentsButton" class="action-button" onclick="copyToClipboard('comments')" style="display: none;">Copier Commentaires</button>
+            </div>
+        </div>
+
+        <div class="tab-container">
+            <button class="tab-button active" onclick="openTab(event, 'transcriptTab')">Créez votre Mindmap</button>
+            <button class="tab-button" onclick="openTab(event, 'commentsTab')">Analysez les commentaires</button>
+        </div>
+
+        <div id="transcriptTab" class="tab-content active">
+            <div class="url-input-group">
+                <label for="videoUrl">URL Vidéo:</label>
+                <input type="text" id="videoUrl" placeholder="Collez l'URL ici...">
+                <div class="button-group">
+                    <button id="fetchFrButton" class="lang-button" onclick="fetchTranscriptFromBackend('fr')">FR</button>
+                    <button id="fetchEnButton" class="lang-button" onclick="fetchTranscriptFromBackend('en')">EN</button>
+                </div>
+                <!-- La miniature sera affichée dynamiquement par JS, mais sa position est ici -->
+                <img id="videoThumbnail" class="video-thumbnail" src="" alt="Video Thumbnail" style="display: none;">
+            </div>
+            <div id="statusTranscript" class="status"></div>
+
+            <div class="outputs-section">
+                <div class="transcript-column" style="display: none;">
+                    <label class="section-label" for="transcriptOutput">
+                        Transcription
+                    </label>
+                    <textarea id="transcriptOutput" readonly placeholder="La transcription apparaîtra ici..."></textarea>
+                </div>
+
+                <div class="gemini-column">
+                    <div id="geminiColumnContent">
+                        <div class="button-group" id="geminiButtonsGroup">
+                            <!-- Les boutons Gemini seront injectés ici par JavaScript -->
+                        </div>
+                        <div id="statusGemini" class="status"></div>
+                        <!-- Remplacement de textarea par un conteneur pour Markmap -->
+                        <div id="markmapOutputContainer">
+                            <button id="exitFullscreenButton" class="action-button" onclick="toggleFullscreen()" style="display: none;">Quitter Plein Écran</button>
+                            <div id="mindmapSpinner" class="spinner-overlay" style="display: none;">
+                                <img src="/public/Scriptou.png" alt="Chargement..." class="spinner-image">
+                                <p id="spinnerMessage" class="spinner-message"></p>
+                            </div>
+                            <svg id="markmapOutput"></svg>
+                            <div id="markmapPlaceholder">Le mindmap apparaîtra ici...</div>
+                        </div>
+                        <div id="copyGeminiButtonContainer">
+                            <button id="copyGeminiButton" class="action-button" onclick="copyToClipboard('gemini')" style="display: none;">Copier Source Markdown</button>
+                            <button id="fullscreenButton" class="action-button" onclick="toggleFullscreen()" style="display: none;">Plein Écran</button>
+                            <button id="downloadPdfButton" class="action-button" onclick="downloadAsPDF()" style="display: none;">Télécharger en PDF</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="commentsTab" class="tab-content" style="flex-direction: column;">
+            <div class="url-input-group">
+                <label for="commentsVideoUrl">URL Vidéo (Commentaires):</label>
+                <input type="text" id="commentsVideoUrl" placeholder="Collez l'URL ici...">
+                <div class="button-group">
+                    <button id="runFullAnalysisButton" class="main-button" onclick="runFullAnalysis()">
+                        Lancer l'Analyse Complète
+                    </button>
+                </div>
+            </div>
+            <div id="statusComments" class="status"></div>
+            <div id="analysisTimerContainer" style="display: none; margin-top: 15px; text-align: center;">
+                <p id="analysisTimerMessage" style="font-size: 1.1em; color: var(--text-primary); font-weight: 500;"></p>
+                <p id="analysisTimer" style="font-size: 1.5em; color: var(--primary-color); font-weight: 700; margin-top: 5px;"></p>
+            </div>
+            <!-- Conteneur pour les détails de la vidéo pendant l'analyse -->
+            <div id="videoInfoContainer" class="video-info-container" style="display: none;">
+                <img id="videoInfoThumbnail" src="" alt="Miniature de la vidéo"/>
+                <div class="video-info-text">
+                    <h3 id="videoInfoTitle"></h3>
+                    <p id="videoInfoMessage"></p>
+                </div>
+            </div>
+            <!-- Conteneur pour le carrousel de commentaires pendant l'analyse -->
+            <div id="comment-carousel-container" class="comment-carousel-container" style="display: none;">
+                <div id="comment-carousel-content" class="comment-carousel-content">
+                    <!-- Le commentaire sera injecté ici -->
+                </div>
+                <p id="comment-carousel-caption">Analyse en cours...</p>
+            </div>
+            <!-- Conteneur pour afficher les résultats de l'analyse -->
+            <div id="commentAnalysisResultContainer" style="display: none; margin-top: 20px; flex-grow: 1; overflow-y: auto; padding: 5px;">
+               <!-- Les résultats formatés seront injectés ici -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Structure du Popup -->
+    <div id="popupOverlay" class="popup-overlay">
+        <div id="popupContent" class="popup-content">
+            <p id="popupMessage" class="popup-message"></p>
+            <button id="popupCloseButton" class="popup-close-button">Fermer</button>
+        </div>
+    </div>
+
+    <script>
+        const videoUrlInput = document.getElementById('videoUrl');
+        const statusTranscriptDiv = document.getElementById('statusTranscript');
+        const transcriptOutputTextarea = document.getElementById('transcriptOutput');
+        const copyTranscriptButton = document.getElementById('copyTranscriptButton');
+        const videoThumbnail = document.getElementById('videoThumbnail');
+        
+        const geminiColumnContent = document.getElementById('geminiColumnContent');
+        const geminiButtonsGroup = document.getElementById('geminiButtonsGroup');
+        const statusGeminiDiv = document.getElementById('statusGemini');
+        const markmapSvgElement = document.getElementById('markmapOutput');
+        const markmapPlaceholder = document.getElementById('markmapPlaceholder');
+
+        const copyGeminiButton = document.getElementById('copyGeminiButton');
+        const copyGeminiButtonContainer = document.getElementById('copyGeminiButtonContainer');
+
+        const commentsVideoUrlInput = document.getElementById('commentsVideoUrl');
+        const statusCommentsDiv = document.getElementById('statusComments');
+        const commentsOutputDiv = document.getElementById('commentsOutput');
+        const copyCommentsButton = document.getElementById('copyCommentsButton');
+
+
+        const allFetchButtons = [document.getElementById('fetchFrButton'), document.getElementById('fetchEnButton'), document.getElementById('runFullAnalysisButton')];
+        let currentTranscript = "";
+        let currentVideoTitle = "";
+        let currentThumbnailUrl = "";
+        let currentGeminiResponse = ""; // Conservera la source Markdown
+        let currentMarkmapInstance = null; // Pour gérer l'instance Markmap
+        let currentComments = []; // Pour stocker les commentaires
+        let localAnalysisData = null; // Pour stocker les résultats de l'analyse locale
+        let geminiAnalysisData = null; // Pour stocker les résultats de l'analyse Gemini
+        let rootColors = {}; // Pour stocker les couleurs du :root
+        let messageIntervalId = null; // Pour l'intervalle des messages du spinner
+        let analysisTimerInterval = null; // Pour le timer de l'analyse des commentaires
+        let commentCarouselInterval = null; // Pour le carrousel de commentaires
+        let analysisFinished = false; // Flag pour indiquer si l'analyse est terminée
+
+        function showPopup(message, type = 'info') {
+            const overlay = document.getElementById('popupOverlay');
+            const content = document.getElementById('popupContent');
+            const messageP = document.getElementById('popupMessage');
+            const closeButton = document.getElementById('popupCloseButton');
+
+            messageP.textContent = message;
+            content.className = `popup-content ${type}`;
+            overlay.style.display = 'flex';
+
+            const closePopup = () => {
+                overlay.style.display = 'none';
+            };
+
+            closeButton.onclick = closePopup;
+            overlay.onclick = (event) => {
+                if (event.target === overlay) {
+                    closePopup();
+                }
+            };
+        }
+
+        function setStatus(div, message, type = 'info', ephemeral = false) {
+            div.textContent = message;
+            div.className = `status ${type}`;
+            div.style.display = 'block';
+            if (ephemeral && type === 'success') {
+                setTimeout(() => { div.style.display = 'none'; }, 2000);
+            }
+        }
+
+        function clearMarkmap() {
+            if (currentMarkmapInstance) {
+                // Markmap n'a pas de méthode destroy() simple, on vide le SVG
+            }
+            while (markmapSvgElement.firstChild) {
+                markmapSvgElement.removeChild(markmapSvgElement.firstChild);
+            }
+            markmapPlaceholder.style.display = 'block'; // Afficher le placeholder
+            currentGeminiResponse = ""; // Réinitialiser aussi la source
+        }
+
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "flex"; /* Utiliser flex pour les tab-content */
+            evt.currentTarget.className += " active";
+        }
+
+        // Le spinner est maintenant directement dans le HTML.
+        const spinnerElement = document.getElementById('mindmapSpinner');
+
+        function showSpinner() {
+            if (spinnerElement) {
+                spinnerElement.style.display = 'flex';
+                markmapPlaceholder.style.display = 'none'; // Cacher le placeholder
+
+                const messages = [
+                    "Scriptou analyse la structure de la vidéo pour vous...",
+                    "Scriptou crée un mindmap personnalisé, que vous soyez étudiant, passionné, musicien ou historien...",
+                    "Scriptou extrait les concepts clés et les idées principales...",
+                    "Un peu de patience, Scriptou fait opérer la magie !"
+                ];
+                const spinnerMessageP = document.getElementById('spinnerMessage');
+                
+                // Afficher un premier message immédiatement
+                spinnerMessageP.textContent = messages[Math.floor(Math.random() * messages.length)];
+
+                // Changer le message toutes les 3 secondes
+                messageIntervalId = setInterval(() => {
+                    const randomIndex = Math.floor(Math.random() * messages.length);
+                    spinnerMessageP.textContent = messages[randomIndex];
+                }, 3000);
+            }
+        }
+
+        function hideSpinner() {
+            if (spinnerElement) {
+                spinnerElement.style.display = 'none';
+                if (messageIntervalId) {
+                    clearInterval(messageIntervalId); // Arrêter le changement de message
+                    messageIntervalId = null;
+                }
+                // Ne pas réafficher le placeholder ici, car soit le mindmap, soit une erreur l'affichera.
+            }
+        }
+
+        function updateButtonStates(isFetching = false) {
+            const hasTranscript = currentTranscript && currentTranscript.trim() !== "";
+            const hasGeminiResponse = currentGeminiResponse && currentGeminiResponse.trim() !== "";
+            const hasComments = currentComments.length > 0;
+
+            allFetchButtons.forEach(btn => btn.disabled = isFetching);
+            
+            copyTranscriptButton.disabled = isFetching || !hasTranscript;
+            copyTranscriptButton.style.display = hasTranscript && !isFetching ? 'inline-block' : 'none';
+
+            copyGeminiButton.disabled = isFetching || !hasGeminiResponse;
+            const fullscreenButton = document.getElementById('fullscreenButton');
+            copyGeminiButtonContainer.style.display = hasGeminiResponse && !isFetching ? 'block' : 'none';
+            copyGeminiButton.style.display = hasGeminiResponse && !isFetching ? 'inline-block' : 'none';
+            fullscreenButton.style.display = hasGeminiResponse && !isFetching ? 'inline-block' : 'none';
+            const downloadPdfButton = document.getElementById('downloadPdfButton');
+            downloadPdfButton.style.display = hasGeminiResponse && !isFetching ? 'inline-block' : 'none';
+
+            copyCommentsButton.disabled = isFetching || !hasComments;
+            copyCommentsButton.style.display = hasComments && !isFetching ? 'inline-block' : 'none';
+
+
+            const geminiActionButtons = document.querySelectorAll('#geminiButtonsGroup .gemini-button');
+            geminiActionButtons.forEach(btn => btn.disabled = isFetching || !hasTranscript);
+
+            if (hasTranscript && !isFetching) {
+                geminiColumnContent.style.display = 'flex';
+                if (!hasGeminiResponse) { // Si transcript mais pas encore de mindmap
+                    markmapPlaceholder.style.display = 'block';
+                }
+            } else if (!hasTranscript) {
+                geminiColumnContent.style.display = 'none';
+                markmapPlaceholder.style.display = 'none'; // Cacher aussi le placeholder
+            }
+            
+            if(isFetching && hasGeminiResponse) {
+                copyGeminiButtonContainer.style.display = 'block';
+            } else if (isFetching && !hasGeminiResponse) {
+                 copyGeminiButtonContainer.style.display = 'none';
+            }
+
+            if (isFetching) {
+                showSpinner();
+            } else {
+                hideSpinner();
+            }
+        }
+
+        function getVideoId(videoUrl) {
+            if (!videoUrl) return null;
+            try {
+                const url = new URL(videoUrl);
+                if (url.hostname === 'youtu.be') {
+                    return url.pathname.slice(1).split('/')[0];
+                } else if (url.hostname.includes('youtube.com')) {
+                    const videoId = url.searchParams.get('v');
+                    if (videoId) return videoId;
+                    const pathParts = url.pathname.split('/');
+                    if (pathParts.includes('embed')) {
+                        return pathParts[pathParts.indexOf('embed') + 1];
+                    }
+                }
+            } catch (e) {
+                console.error("URL de vidéo invalide:", e);
+                return null;
+            }
+            return null;
+        }
+
+        function linkifyTimestamps(text, videoUrl) {
+            const videoId = getVideoId(videoUrl);
+            if (!videoId) return text;
+
+            const timestampRegex = /\(?(\d{1,2}:\d{2}(?::\d{2})?)\)?/g;
+
+            return text.replace(timestampRegex, (match, timestamp) => {
+                const parts = timestamp.split(':').map(Number);
+                let totalSeconds = 0;
+                if (parts.length === 3) { // HH:MM:SS
+                    totalSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+                } else if (parts.length === 2) { // MM:SS
+                    totalSeconds = parts[0] * 60 + parts[1];
+                } else {
+                    return match;
+                }
+
+                const youtubeLink = `https://www.youtube.com/watch?v=${videoId}&t=${totalSeconds}s`;
+                return `<a href="${youtubeLink}" target="_blank" rel="noopener noreferrer" style="color: var(--accent-color); text-decoration: underline;">${match}</a>`;
+            });
+        }
+
+        function linkifyTimestampsInMarkdown(markdown, videoUrl) {
+            const videoId = getVideoId(videoUrl);
+            if (!videoId) return markdown;
+
+            const timestampRegex = /\(?(\d{1,2}:\d{2}(?::\d{2})?)\)?/g;
+
+            return markdown.replace(timestampRegex, (match, timestamp) => {
+                const parts = timestamp.split(':').map(Number);
+                let totalSeconds = 0;
+                if (parts.length === 3) {
+                    totalSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+                } else if (parts.length === 2) {
+                    totalSeconds = parts[0] * 60 + parts[1];
+                } else {
+                    return match;
+                }
+
+                const youtubeLink = `https://www.youtube.com/watch?v=${videoId}&t=${totalSeconds}s`;
+                return `[${match}](${youtubeLink})`;
+            });
+        }
+
+        async function loadAndCreateGeminiButtons() {
+            const buttonDescriptions = {
+                'analysepaper.txt': 'Analyser un article',
+                'coremessage.txt': 'Message principal',
+                'generer_mindmap.txt': 'Générer un Mindmap',
+                'hiddenmessage.txt': 'Message caché',
+                'wisdom.txt': 'Sagesse extraite'
+            };
+        
+            try {
+                const response = await fetch('/api/prompts');
+                if (!response.ok) {
+                    console.error("Erreur récupération prompts:", response.statusText);
+                    if (geminiColumnContent.style.display === 'flex') {
+                        setStatus(statusGeminiDiv, "Impossible de charger les actions Gemini.", "error");
+                    }
+                    return;
+                }
+                const prompts = await response.json();
+                geminiButtonsGroup.innerHTML = '';
+                if (prompts && prompts.length > 0) {
+                    prompts.forEach(prompt => {
+                        if (!prompt.filename.startsWith('comments_')) {
+                            const button = document.createElement('button');
+                            button.className = 'gemini-button';
+                            // Utiliser la description du dictionnaire, ou le displayName par défaut
+                            button.textContent = buttonDescriptions[prompt.filename] || prompt.displayName;
+                            button.onclick = () => callGeminiAPI(prompt.filename);
+                            geminiButtonsGroup.appendChild(button);
+                        }
+                    });
+                } else {
+                    geminiButtonsGroup.innerHTML = "<span style='font-size:0.9em; color:#555; padding: 5px 0;'>Aucun prompt Gemini trouvé.</span>";
+                }
+            } catch (error) {
+                console.error("Erreur JS chargement prompts:", error);
+                if (geminiColumnContent.style.display === 'flex') {
+                    setStatus(statusGeminiDiv, "Erreur chargement actions Gemini.", "error");
+                }
+            }
+            updateButtonStates();
+        }
+
+        async function fetchTranscriptFromBackend(languagePref) {
+            const videoUrl = videoUrlInput.value;
+
+            transcriptOutputTextarea.value = '';
+            currentTranscript = "";
+            clearMarkmap(); // Vider le mindmap et currentGeminiResponse
+            if (statusGeminiDiv) statusGeminiDiv.style.display = 'none';
+
+            setStatus(statusTranscriptDiv, "Récupération de la transcription...", 'info');
+            updateButtonStates(true);
+
+            if (!videoUrl) {
+                setStatus(statusTranscriptDiv, "Veuillez entrer une URL.", 'error');
+                updateButtonStates(false);
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/transcript', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: videoUrl, language: languagePref }),
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    setStatus(statusTranscriptDiv, data.error || `Erreur: ${response.status}`, 'error');
+                } else {
+                    if (data.transcript && data.transcript.trim() !== "") {
+                        currentTranscript = data.transcript;
+                        currentVideoTitle = data.video_title || "Titre non disponible";
+                        currentThumbnailUrl = data.thumbnail_url || "";
+                        transcriptOutputTextarea.value = currentTranscript;
+                        const langMsg = data.detected_language ? ` (détectée: ${data.detected_language.toUpperCase()})` : "";
+                        statusTranscriptDiv.style.display = 'none'; // Cacher l'ancien statut
+                        
+                        // Afficher la miniature si disponible
+                        if (currentThumbnailUrl) {
+                            videoThumbnail.src = currentThumbnailUrl;
+                            videoThumbnail.style.display = 'block';
+                        } else {
+                            videoThumbnail.style.display = 'none';
+                        }
+
+                    } else {
+                        setStatus(statusTranscriptDiv, data.error || "Transcription vide reçue.", 'error');
+                        videoThumbnail.style.display = 'none'; // Cacher la miniature si pas de transcript
+                    }
+                }
+            } catch (error) {
+                setStatus(statusTranscriptDiv, `Erreur de communication: ${error.message}`, 'error');
+                console.error("Erreur fetch transcript:", error);
+            } finally {
+                updateButtonStates(false);
+            }
+        }
+        
+        function copyToClipboard(type) {
+            let textToCopy = "";
+            let buttonElement;
+            let statusDivForError;
+
+            if (type === 'transcript') {
+                textToCopy = currentTranscript;
+                buttonElement = copyTranscriptButton;
+                statusDivForError = statusTranscriptDiv;
+            } else if (type === 'gemini') {
+                textToCopy = currentGeminiResponse; // C'est la source Markdown
+                buttonElement = copyGeminiButton;
+                statusDivForError = statusGeminiDiv;
+            } else if (type === 'comments') {
+                textToCopy = currentComments.map(c => `${c.author} (${new Date(c.publishedAt).toLocaleDateString()}): ${c.text}`).join('\n\n');
+                buttonElement = copyCommentsButton;
+                statusDivForError = statusCommentsDiv;
+            }
+
+            if (!textToCopy) return;
+
+            navigator.clipboard.writeText(textToCopy)
+                .then(() => {
+                    const originalText = buttonElement.textContent;
+                    buttonElement.textContent = "Copié !";
+                    setTimeout(() => { buttonElement.textContent = originalText; }, 1500);
+                })
+                .catch(err => {
+                    setStatus(statusDivForError, "Échec de la copie.", 'error');
+                    console.error('Erreur copie:', err);
+                });
+        }
+
+        async function callGeminiAPI(promptFile) {
+            if (!currentTranscript || currentTranscript.trim() === "") {
+                 if (statusGeminiDiv) {
+                    setStatus(statusGeminiDiv, "Obtenez d'abord une transcription.", 'error');
+                 }
+                return;
+            }
+
+            if (typeof window.markmap === 'undefined' ||
+                typeof window.markmap.Transformer === 'undefined' ||
+                typeof window.markmap.Markmap === 'undefined') {
+                if (statusGeminiDiv) setStatus(statusGeminiDiv, "Erreur: La librairie Markmap (visualisation) n'a pas pu être chargée. Vérifiez votre connexion internet ou la console du navigateur.", 'error');
+                console.error("Markmap libraries not found on window object.");
+                updateButtonStates(false); // Réactiver les boutons
+                return;
+            }
+
+            // if (statusGeminiDiv) setStatus(statusGeminiDiv, `Appel à Gemini avec le prompt '${promptFile}'...`, 'info');
+            
+            clearMarkmap(); // Vider l'ancien mindmap et currentGeminiResponse
+            updateButtonStates(true); // Ceci va appeler showSpinner()
+
+            try {
+                const response = await fetch('/api/gemini', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ transcript: currentTranscript, prompt_file: promptFile }),
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                     if (statusGeminiDiv) setStatus(statusGeminiDiv, data.error || `Erreur Gemini: ${response.status}`, 'error');
+                } else {
+                    if (data.gemini_response && data.gemini_response.trim() !== "") {
+                        currentGeminiResponse = data.gemini_response; // Stocker la source Markdown originale
+
+                        const videoUrl = videoUrlInput.value;
+                        const linkedMarkdown = linkifyTimestampsInMarkdown(currentGeminiResponse, videoUrl);
+
+                        // On ajoute les couleurs via le frontmatter de Markmap pour plus de fiabilité
+                        const colorList = [
+                            rootColors.blueDark,
+                            rootColors.yellowDark,
+                            rootColors.pinkDark,
+                            rootColors.blueLight,
+                            rootColors.yellowLight,
+                            rootColors.pinkLight
+                        ];
+                        const colorFrontmatter = `---
+markmap:
+  color: ${JSON.stringify(colorList)}
+  style: |
+    .markmap-link {
+      stroke: ${rootColors.greyDark};
+      stroke-width: 1.5px;
+    }
+---
+
+`;
+                        const markdownWithColorsAndLinks = colorFrontmatter + linkedMarkdown;
+                        
+                        // Utilisation de Markmap
+                        const { Transformer, Markmap } = window.markmap;
+                        const transformer = new Transformer();
+                        
+                        // 1. Transformer le Markdown avec les couleurs et les liens
+                        const { root, features } = transformer.transform(markdownWithColorsAndLinks);
+                        
+                        // 2. Créer et rendre le Markmap
+                        // Vider le SVG explicitement avant de recréer
+                        while (markmapSvgElement.firstChild) {
+                           markmapSvgElement.removeChild(markmapSvgElement.firstChild);
+                        }
+                        // Plus besoin de la fonction color ici, Markmap va utiliser le frontmatter
+                        const markmapOptions = {
+                            nodeMinHeight: 16,
+                            spacingVertical: 5,
+                            spacingHorizontal: 80,
+                            initialExpandLevel: -1, // -1 pour tout déployer par défaut
+                        };
+                        currentMarkmapInstance = Markmap.create(markmapSvgElement, markmapOptions, root);
+                        markmapPlaceholder.style.display = 'none'; // Cacher le placeholder
+
+                        if (statusGeminiDiv) statusGeminiDiv.style.display = 'none'; // Succès, cacher le statut
+                    } else {
+                         if (statusGeminiDiv) setStatus(statusGeminiDiv, data.error || "Réponse vide de Gemini.", 'info');
+                         markmapPlaceholder.style.display = 'block'; // Afficher le placeholder si réponse vide
+                    }
+                }
+            } catch (error) {
+                 if (statusGeminiDiv) setStatus(statusGeminiDiv, `Erreur communication Gemini: ${error.message}`, 'error');
+                console.error("Erreur fetch Gemini:", error);
+                markmapPlaceholder.style.display = 'block'; // Afficher placeholder en cas d'erreur
+            } finally {
+                updateButtonStates(false);
+            }
+        }
+
+        function startAnalysisTimer(duration, dynamicMessages = []) {
+            const timerContainer = document.getElementById('analysisTimerContainer');
+            const timerMessage = document.getElementById('analysisTimerMessage');
+            const timerDisplay = document.getElementById('analysisTimer');
+            timerContainer.style.display = 'block';
+            statusCommentsDiv.style.display = 'none';
+            analysisFinished = false;
+
+            let timeLeft = duration;
+
+            const staticMessages = [
+                { time: 120, text: "Identification des questions posées par les utilisateurs..." },
+                { time: 90, text: "Regroupement des commentaires par thèmes..." },
+                { time: 60, text: "L'IA de Gemini cherche des idées de vidéos pour vous..." },
+                { time: 30, text: "Assemblage final du rapport d'analyse..." }
+            ];
+            
+            const allMessages = [...dynamicMessages, ...staticMessages].sort((a, b) => b.time - a.time);
+            let currentMessageIndex = 0;
+
+            const updateTimer = () => {
+                if (analysisFinished && timeLeft > 10) {
+                    timeLeft = 10;
+                }
+                timeLeft--;
+
+                if (timeLeft < 0) {
+                    stopAnalysisTimer();
+                    return;
+                }
+
+                if (currentMessageIndex < allMessages.length && timeLeft <= allMessages[currentMessageIndex].time) {
+                    timerMessage.textContent = allMessages[currentMessageIndex].text;
+                    currentMessageIndex++;
+                }
+
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            };
+            
+            timerMessage.textContent = "Lancement de l'analyse, veuillez patienter...";
+            analysisTimerInterval = setInterval(updateTimer, 1000);
+        }
+
+        function stopAnalysisTimer() {
+            if (analysisTimerInterval) {
+                clearInterval(analysisTimerInterval);
+                analysisTimerInterval = null;
+            }
+            const timerContainer = document.getElementById('analysisTimerContainer');
+            timerContainer.style.display = 'none';
+        }
+
+        async function runFullAnalysis() {
+            const videoUrl = commentsVideoUrlInput.value;
+            
+            resetCommentsTab();
+            if (!videoUrl) {
+                setStatus(statusCommentsDiv, "Veuillez entrer une URL.", 'error');
+                return;
+            }
+
+            updateButtonStates(true);
+            currentComments = [];
+            const analysisStartTime = Date.now();
+            
+            try {
+                // Étape 1: Récupération des commentaires
+                setStatus(statusCommentsDiv, "Récupération des commentaires...", 'info');
+                const commentsResponse = await fetch('/api/comments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: videoUrl }),
+                });
+                const commentsData = await commentsResponse.json();
+                if (!commentsResponse.ok) throw new Error(commentsData.error || `Erreur de récupération: ${commentsResponse.status}`);
+                
+                currentComments = commentsData.comments;
+                if (currentComments.length === 0) {
+                    setStatus(statusCommentsDiv, "Aucun commentaire trouvé pour cette vidéo.", 'info');
+                    throw new Error("NoComments");
+                }
+                
+                // Démarrer le timer simple et afficher les infos
+                startAnalysisTimer(180);
+                displayVideoInfo(commentsData.video_title, commentsData.thumbnail_url, currentComments.length);
+
+                // Étape 2: Lancement de l'analyse locale pour obtenir les mots-clés
+                const localAnalysisPromise = fetch('/api/analyze_batch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ comments: currentComments }),
+                }).then(res => res.json());
+
+                // Pendant que l'analyse locale tourne, on peut déjà lancer le carrousel
+                startCommentCarousel(currentComments, []); // Carrousel initial sans mots-clés
+
+                // Lancer l'analyse Gemini en parallèle
+                const geminiAnalysisPromise = fetch('/api/analyze_comments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ comments: currentComments, prompt_file: 'comments_content_creator.txt' }),
+                }).then(res => res.json());
+
+                // Attendre les résultats
+                const [localResult, geminiResult] = await Promise.all([localAnalysisPromise, geminiAnalysisPromise]);
+                analysisFinished = true;
+
+                // Mettre à jour le carrousel avec les mots-clés
+                localAnalysisData = localResult;
+                if (localAnalysisData.error) throw new Error(localAnalysisData.error || "Erreur d'analyse locale");
+                startCommentCarousel(currentComments, localAnalysisData.analysis.keywords || []);
+
+                // Afficher les résultats finaux
+                if(localAnalysisData && localAnalysisData.analysis) {
+                    displayLocalAnalysisResults(localAnalysisData.analysis);
+                }
+                
+                geminiAnalysisData = geminiResult;
+                if (geminiAnalysisData.error) throw new Error(geminiAnalysisData.error || "Erreur d'analyse Gemini");
+                displayFormattedAnalysis(geminiAnalysisData.analysis_result, true);
+                
+            } catch (error) {
+                if (error.message !== "NoComments") {
+                    setStatus(statusCommentsDiv, `Erreur : ${error.message}`, 'error');
+                    console.error("Erreur durant l'analyse complète:", error);
+                }
+            } finally {
+                analysisFinished = true;
+                
+                setTimeout(() => {
+                    stopAnalysisTimer();
+                    stopCommentCarousel();
+                    const analysisEndTime = Date.now();
+                    const durationInSeconds = ((analysisEndTime - analysisStartTime) / 1000).toFixed(1);
+                    const isError = statusCommentsDiv.classList.contains('error');
+                    if (!isError && currentComments.length > 0) {
+                         const successMessage = `Analyse complète terminée en ${durationInSeconds}s. (187 minutes économisées)`;
+                         setStatus(statusCommentsDiv, successMessage, 'success', true);
+                    }
+                    updateButtonStates(false);
+                }, 10000);
+            }
+        }
+
+        function resetCommentsTab() {
+           const resultContainer = document.getElementById('commentAnalysisResultContainer');
+           const carouselContainer = document.getElementById('comment-carousel-container');
+           const videoInfoContainer = document.getElementById('videoInfoContainer');
+           resultContainer.style.display = 'none';
+           resultContainer.innerHTML = '';
+           carouselContainer.style.display = 'none';
+           videoInfoContainer.style.display = 'none';
+           statusCommentsDiv.style.display = 'none';
+           stopAnalysisTimer();
+           stopCommentCarousel();
+        }
+
+        function displayVideoInfo(title, thumbnailUrl, commentCount) {
+            const container = document.getElementById('videoInfoContainer');
+            document.getElementById('videoInfoThumbnail').src = thumbnailUrl;
+            document.getElementById('videoInfoTitle').textContent = title;
+            document.getElementById('videoInfoMessage').textContent = `Analyse de ${commentCount} commentaires...`;
+            container.style.display = 'flex';
+        }
+
+        function highlightKeywords(text, keywords) {
+            if (!keywords || keywords.length === 0) return text;
+            const regex = new RegExp(`\\b(${keywords.join('|')})\\b`, 'gi');
+            return text.replace(regex, '<mark>$1</mark>');
+        }
+
+        function startCommentCarousel(comments, keywords) {
+            stopCommentCarousel(); // S'assurer qu'un seul carrousel tourne
+            const container = document.getElementById('comment-carousel-container');
+            const contentDiv = document.getElementById('comment-carousel-content');
+            const captionP = document.getElementById('comment-carousel-caption');
+            container.style.display = 'block';
+
+            let currentIndex = 0;
+
+            const showNextComment = () => {
+                const comment = comments[currentIndex];
+                const highlightedText = highlightKeywords(comment.text, keywords);
+                
+                contentDiv.innerHTML = `<p>"${highlightedText}"</p><span class="comment-author">- ${comment.author}</span>`;
+                
+                // Mettre à jour la légende avec l'étape actuelle de l'analyse
+                const currentMessage = document.getElementById('analysisTimerMessage').textContent;
+                captionP.textContent = currentMessage || "Analyse en cours...";
+
+                currentIndex = (currentIndex + 1) % comments.length;
+            };
+
+            showNextComment(); // Afficher le premier commentaire immédiatement
+            commentCarouselInterval = setInterval(showNextComment, 4000); // Changer toutes les 4 secondes
+        }
+
+        function stopCommentCarousel() {
+            if (commentCarouselInterval) {
+                clearInterval(commentCarouselInterval);
+                commentCarouselInterval = null;
+            }
+            const container = document.getElementById('comment-carousel-container');
+            if(container) container.style.display = 'none';
+        }
+
+        function displayFormattedAnalysis(analysis, append = false) {
+            const resultContainer = document.getElementById('commentAnalysisResultContainer');
+            let gridContainer = resultContainer.querySelector('.analysis-grid');
+
+            if (!gridContainer) {
+                console.error("La grille d'analyse n'a pas été trouvée. Création d'une nouvelle grille.");
+                resultContainer.innerHTML = '<div class="analysis-grid"></div>';
+                gridContainer = resultContainer.querySelector('.analysis-grid');
+            }
+
+            let geminiHTML = '';
+
+            // Sentiment Analysis Card
+            if (analysis.sentiment) {
+                geminiHTML += `
+                    <div class="analysis-card">
+                        <div class="analysis-card-header">
+                            <span>&#129302;</span> <!-- Robot Face icon -->
+                            <span>Analyse des Sentiments</span>
+                        </div>
+                        <div class="analysis-card-content" style="display: flex; flex-direction: column; gap: 12px; padding-top: 10px;">
+                            ${getSentimentBarHTML('positive', analysis.sentiment.positive)}
+                            ${getSentimentBarHTML('neutral', analysis.sentiment.neutral)}
+                            ${getSentimentBarHTML('negative', analysis.sentiment.negative)}
+                        </div>
+                    </div>`;
+            }
+
+            // Key Themes Card
+            if (analysis.keyThemes && analysis.keyThemes.length > 0) {
+                geminiHTML += `
+                    <div class="analysis-card">
+                        <div class="analysis-card-header">
+                           <span>&#128161;</span> <!-- Lightbulb icon -->
+                           <span>Thèmes Clés (Analyse IA)</span>
+                        </div>
+                        <div class="analysis-card-content">
+                             ${analysis.keyThemes.map((theme, index) => {
+                                // On assigne un ID unique à chaque thème
+                                theme.themeId = index;
+
+                                const commentsHTML = theme.commentaires && theme.commentaires.length > 0
+                                    ? theme.commentaires.map(comment => `<p style="font-size: 0.9em; font-style: italic; border-left: 3px solid var(--border-color); padding-left: 8px; margin-top: 8px; color: var(--text-secondary);">"${comment}"</p>`).join('')
+                                    : `<p style="font-size: 0.9em; font-style: italic; border-left: 3px solid var(--border-color); padding-left: 8px; margin-top: 8px; color: var(--text-secondary);">"${theme.exampleComment}"</p>`;
+                                
+                                return `
+                                <div style="margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+                                    <p style="font-weight: 600; color: var(--primary-color); cursor: pointer;" onclick="filterCommentsByTheme(${theme.themeId})">${theme.theme}</p>
+                                    <p style="font-size: 0.9em; margin-top: 4px; color: var(--text-medium);">${theme.summary}</p>
+                                    ${commentsHTML}
+                                </div>
+                                `
+                            }).join('')}
+                        </div>
+                    </div>`;
+            }
+
+            // Video Ideas Card
+            if (analysis.videoIdeas && analysis.videoIdeas.length > 0) {
+                geminiHTML += `
+                    <div class="analysis-card">
+                        <div class="analysis-card-header">
+                            <span>&#127916;</span> <!-- Video Camera icon -->
+                            <span>Idées de Vidéos (Analyse IA)</span>
+                        </div>
+                        <div class="analysis-card-content">
+                            <ul style="list-style-type: none; padding-left: 0; margin: 0;">
+                                ${analysis.videoIdeas.map(idea => `
+                                    <li style="display: flex; align-items: flex-start; margin-bottom: 10px; color: var(--text-medium);">
+                                        <span style="margin-right: 8px; color: var(--primary-color);">&#10140;</span>
+                                        <span>${idea}</span>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    </div>`;
+            }
+            
+            if (append) {
+                gridContainer.innerHTML += geminiHTML;
+            } else {
+                // Si on n'ajoute pas, on remplace tout le contenu
+                resultContainer.innerHTML = `<div class="analysis-grid">${geminiHTML}</div>`;
+            }
+            resultContainer.style.display = 'block';
+        }
+
+        function getSentimentBarHTML(type, value) {
+            const colors = { positive: 'var(--success-color)', negative: 'var(--error-color)', neutral: 'var(--secondary-color)' };
+            const labels = { positive: 'Positif', negative: 'Négatif', neutral: 'Neutre' };
+            return `<div class="w-full">
+                        <div class="flex justify-between mb-1.5">
+                            <span class="text-sm font-medium" style="color: var(--text-medium);">${labels[type]}</span>
+                            <span class="text-sm font-medium" style="color: var(--text-secondary);">${value}%</span>
+                        </div>
+                        <div class="w-full rounded-full h-2" style="background-color: var(--border-color);">
+                            <div class="h-2 rounded-full" style="width: ${value}%; background-color: ${colors[type]};"></div>
+                        </div>
+                    </div>`;
+        }
+
+        function displayLocalAnalysisResults(analysisData) {
+            const resultContainer = document.getElementById('commentAnalysisResultContainer');
+            const { sentiments, keywords, questions, topics, word_ranking } = analysisData;
+
+            if (!sentiments || sentiments.length === 0) {
+                resultContainer.innerHTML = '<p>Aucun résultat d\'analyse locale à afficher.</p>';
+                resultContainer.style.display = 'block';
+                return;
+            }
+
+            // --- Word Ranking Card ---
+            let wordRankingHTML = '';
+            if (word_ranking && word_ranking.length > 0) {
+                wordRankingHTML = `
+                    <div class="analysis-card">
+                        <div class="analysis-card-header">
+                            <span>&#128202;</span> <!-- Bar Chart icon -->
+                            <span>Classement des Mots</span>
+                        </div>
+                        <div class="analysis-card-content" style="display: flex; flex-wrap: wrap; gap: 8px; align-content: flex-start;">
+                            ${word_ranking.map(item => `<button class="keyword-tag" onclick="filterCommentsByWord('${item[0].replace(/'/g, "\\'")}')">${item[0]} (${item[1]})</button>`).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // --- Keywords Card (Thèmes de l'analyse locale) ---
+            let keywordsHTML = '';
+            if (analysisData.themes && analysisData.themes.length > 0) {
+                keywordsHTML = `
+                    <div class="analysis-card">
+                        <div class="analysis-card-header">
+                            <span>&#128278;</span> <!-- Key icon -->
+                            <span>Mots-clés (Thèmes)</span>
+                        </div>
+                        <div class="analysis-card-content" style="display: flex; flex-wrap: wrap; gap: 8px; align-content: flex-start;">
+                            ${analysisData.themes.map(theme => `<button class="keyword-tag" onclick="filterCommentsByTheme(${theme.themeId})">#${theme.name}</button>`).join('')}
+                            <button class="keyword-tag" onclick="resetCommentFilter()" style="background-color: var(--grey-dark); color: white;">#Tous</button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // --- Questions Card ---
+            let questionsHTML = '';
+            if (questions && questions.length > 0) {
+                questionsHTML = `
+                    <div class="analysis-card">
+                        <div class="analysis-card-header">
+                            <span>&#10067;</span> <!-- Question mark icon -->
+                            <span>Questions des Utilisateurs</span>
+                        </div>
+                        <div class="analysis-card-content">
+                            <ul style="list-style-type: none; padding-left: 0; margin: 0;">
+                                ${questions.map(q => `<li style="margin-bottom: 10px; color: var(--text-medium); border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">${q}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // --- Sentiments Card (Liste des commentaires) ---
+            let sentimentsHTML = `
+                <div class="analysis-card" style="grid-column: span 2;">
+                     <div class="analysis-card-header">
+                        <span>&#128578;</span> <!-- Smile icon -->
+                        <span id="comment-list-title">Tous les Commentaires</span>
+                        <button id="resetFilterBtn" class="copy-button-inline" style="margin-left: auto; display: none;" onclick="resetCommentFilter()">Tout voir</button>
+                    </div>
+                    <div id="sentiments-list" class="analysis-card-content">
+                        ${sentiments.map(res => {
+                            const confidencePercent = (res.confidence * 100).toFixed(0);
+                            const sentimentClass = 'sentiment-' + res.sentiment.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                            return `
+                                <div class="comment-card analysis-row" data-text="${res.text.toLowerCase()}">
+                                    <div class="comment-card-header">
+                                        <span class="sentiment-indicator ${sentimentClass}">${res.sentiment.charAt(0).toUpperCase() + res.sentiment.slice(1)}</span>
+                                        <span style="color: var(--text-light);">${confidencePercent}%</span>
+                                    </div>
+                                    <p class="comment-card-text">${res.text}</p>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+            
+            resultContainer.innerHTML = `
+                <div class="analysis-grid">
+                    ${sentimentsHTML}
+                    ${wordRankingHTML}
+                    ${keywordsHTML}
+                    ${questionsHTML}
+                </div>
+            `;
+            resultContainer.style.display = 'block';
+        }
+
+        function filterCommentsByWord(word) {
+            if (!localAnalysisData || !localAnalysisData.analysis.sentiments) return;
+
+            const allSentiments = localAnalysisData.analysis.sentiments;
+            const filteredComments = allSentiments.filter(comment =>
+                new RegExp(`\\b${word}\\b`, 'i').test(comment.text)
+            );
+
+            const sentimentListContainer = document.getElementById('sentiments-list');
+            const commentListTitle = document.getElementById('comment-list-title');
+
+            if (filteredComments.length > 0) {
+                sentimentListContainer.innerHTML = filteredComments.map(res => {
+                    const confidencePercent = (res.confidence * 100).toFixed(0);
+                    const sentimentClass = 'sentiment-' + res.sentiment.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    return `
+                        <div class="comment-card analysis-row" data-text="${res.text.toLowerCase()}">
+                            <div class="comment-card-header">
+                                <span class="sentiment-indicator ${sentimentClass}">${res.sentiment.charAt(0).toUpperCase() + res.sentiment.slice(1)}</span>
+                                <span style="color: var(--text-light);">${confidencePercent}%</span>
+                            </div>
+                            <p class="comment-card-text">${res.text}</p>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                sentimentListContainer.innerHTML = `<p style='color: var(--text-medium);'>Aucun commentaire trouvé contenant le mot "${word}".</p>`;
+            }
+            
+            commentListTitle.textContent = `Commentaires contenant "${word}"`;
+            const resetButton = document.getElementById('resetFilterBtn');
+            if (resetButton) resetButton.style.display = 'inline-block';
+        }
+
+        function filterCommentsByTheme(themeId) {
+            if (!localAnalysisData || !localAnalysisData.analysis || !localAnalysisData.analysis.themes) {
+                console.error("Les données d'analyse locale (themes) ne sont pas disponibles.");
+                return;
+            }
+            const sentimentsList = document.getElementById('sentiments-list');
+            const commentListTitle = document.getElementById('comment-list-title');
+            if (!sentimentsList || !commentListTitle) {
+                console.error("Le conteneur de la liste des sentiments ou son titre est introuvable.");
+                return;
+            }
+
+            const themeData = localAnalysisData.analysis.themes.find(t => t.themeId === themeId);
+
+            if (!themeData || !themeData.comments) {
+                console.error(`Thème local avec ID '${themeId}' ou ses commentaires non trouvés.`);
+                sentimentsList.innerHTML = `<p style='color: var(--text-medium);'>Désolé, impossible de retrouver les commentaires pour le thème sélectionné.</p>`;
+                return;
+            }
+
+            sentimentsList.innerHTML = themeData.comments.map(res => {
+                const confidencePercent = (res.confidence * 100).toFixed(0);
+                const sentimentClass = 'sentiment-' + res.sentiment.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                return `
+                    <div class="comment-card analysis-row" data-text="${res.text.toLowerCase()}">
+                        <div class="comment-card-header">
+                            <span class="sentiment-indicator ${sentimentClass}">${res.sentiment.charAt(0).toUpperCase() + res.sentiment.slice(1)}</span>
+                            <span style="color: var(--text-light);">${confidencePercent}%</span>
+                        </div>
+                        <p class="comment-card-text">${res.text}</p>
+                    </div>
+                `;
+            }).join('');
+
+            commentListTitle.textContent = `Commentaires sur le thème "${themeData.name}"`;
+            const resetButton = document.getElementById('resetFilterBtn');
+            if (resetButton) resetButton.style.display = 'inline-block';
+        }
+
+        function resetCommentFilter() {
+            if (!localAnalysisData || !localAnalysisData.analysis.sentiments) return;
+            
+            const allSentiments = localAnalysisData.analysis.sentiments;
+            const sentimentListContainer = document.getElementById('sentiments-list');
+            const commentListTitle = document.getElementById('comment-list-title');
+            
+            sentimentListContainer.innerHTML = allSentiments.map(res => {
+                const confidencePercent = (res.confidence * 100).toFixed(0);
+                const sentimentClass = 'sentiment-' + res.sentiment.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                return `
+                    <div class="comment-card analysis-row" data-text="${res.text.toLowerCase()}">
+                        <div class="comment-card-header">
+                            <span class="sentiment-indicator ${sentimentClass}">${res.sentiment.charAt(0).toUpperCase() + res.sentiment.slice(1)}</span>
+                            <span style="color: var(--text-light);">${confidencePercent}%</span>
+                        </div>
+                        <p class="comment-card-text">${res.text}</p>
+                    </div>
+                `;
+            }).join('');
+
+            commentListTitle.textContent = "Tous les Commentaires";
+            const resetButton = document.getElementById('resetFilterBtn');
+            if(resetButton) resetButton.style.display = 'none';
+
+            // Réinitialiser l'état visuel des boutons de mots-clés
+            const keywordTags = document.querySelectorAll('.keyword-tag');
+            keywordTags.forEach(tag => {
+                if (tag.textContent === '#Tous') {
+                    tag.style.backgroundColor = 'var(--grey-dark)';
+                    tag.style.color = 'white';
+                } else {
+                    tag.style.backgroundColor = 'var(--border-color)';
+                    tag.style.color = 'var(--text-medium)';
+                }
+            });
+        }
+
+        function toggleFullscreen() {
+            const container = document.getElementById('markmapOutputContainer');
+            const button = document.getElementById('fullscreenButton');
+            const exitButton = document.getElementById('exitFullscreenButton');
+            const isFullscreen = container.classList.toggle('fullscreen');
+            
+            button.textContent = isFullscreen ? 'Quitter Plein Écran (Échap)' : 'Plein Écran';
+            exitButton.style.display = isFullscreen ? 'block' : 'none';
+        
+            if (isFullscreen) {
+                window.addEventListener('keydown', handleEscKey, { once: true });
+            } else {
+                window.removeEventListener('keydown', handleEscKey);
+            }
+        
+            // Redessiner le mindmap pour qu'il s'adapte à la nouvelle taille
+            if (currentMarkmapInstance) {
+                // Donner un petit délai pour que le DOM se mette à jour avant de redessiner
+                setTimeout(() => currentMarkmapInstance.fit(), 50);
+            }
+        }
+
+        function handleEscKey(event) {
+           if (event.key === 'Escape') {
+               const container = document.getElementById('markmapOutputContainer');
+               if (container.classList.contains('fullscreen')) {
+                   toggleFullscreen();
+               }
+           }
+        }
+        
+        async function downloadAsPDF() {
+            if (!currentGeminiResponse) {
+                showPopup("Il n'y a pas de mindmap à exporter.", 'error');
+                return;
+            }
+
+            const downloadButton = document.getElementById('downloadPdfButton');
+            const originalText = downloadButton.textContent;
+            downloadButton.textContent = 'Génération...';
+            downloadButton.disabled = true;
+
+            try {
+                const videoUrl = videoUrlInput.value;
+                const response = await fetch('/api/export_pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        markdown: currentGeminiResponse,
+                        videoUrl: videoUrl,
+                        videoTitle: currentVideoTitle,
+                        thumbnailUrl: currentThumbnailUrl
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `Erreur du serveur: ${response.status}`);
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = 'mindmap.pdf';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                showPopup("Le téléchargement du PDF a commencé.", 'success');
+
+            } catch (error) {
+                console.error("Erreur lors du téléchargement du PDF:", error);
+                showPopup(`Erreur lors de la génération du PDF: ${error.message}`, 'error');
+            } finally {
+                downloadButton.textContent = originalText;
+                downloadButton.disabled = false;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Charger les couleurs depuis les variables CSS du :root
+            const style = getComputedStyle(document.documentElement);
+            rootColors = {
+                blueDark: style.getPropertyValue('--blue-dark').trim(),
+                yellowDark: style.getPropertyValue('--yellow-dark').trim(),
+                pinkDark: style.getPropertyValue('--pink-dark').trim(),
+                blueLight: style.getPropertyValue('--blue-light').trim(),
+                yellowLight: style.getPropertyValue('--yellow-light').trim(),
+                pinkLight: style.getPropertyValue('--pink-light').trim(),
+                greyDark: style.getPropertyValue('--grey-dark').trim()
+            };
+
+            loadAndCreateGeminiButtons();
+            // Initialisation des affichages pour les deux onglets
+            document.getElementById('transcriptTab').style.display = 'flex'; // Utiliser flex pour la tabulation active
+            document.getElementById('commentsTab').style.display = 'none';
+
+            geminiColumnContent.style.display = 'none';
+            copyTranscriptButton.style.display = 'none';
+            copyGeminiButtonContainer.style.display = 'none';
+            copyGeminiButton.style.display = 'none';
+            copyCommentsButton.style.display = 'none'; // Hide comments copy button initially
+            markmapPlaceholder.style.display = 'block';
+            videoThumbnail.style.display = 'none';
+        });
+
+        // --- Début de la logique de synchronisation des URL ---
+        const transcriptUrlInput = document.getElementById('videoUrl');
+        const commentsUrlInput = document.getElementById('commentsVideoUrl');
+
+        // Au chargement, charger depuis localStorage
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedUrl = localStorage.getItem('persistentYouTubeUrl');
+            if (savedUrl) {
+                transcriptUrlInput.value = savedUrl;
+                commentsUrlInput.value = savedUrl;
+            }
+        });
+
+        // Fonction pour synchroniser et sauvegarder
+        const syncUrls = (sourceElement) => {
+            const newUrl = sourceElement.value;
+            if (sourceElement.id === 'videoUrl') {
+                commentsUrlInput.value = newUrl;
+            } else {
+                transcriptUrlInput.value = newUrl;
+            }
+            localStorage.setItem('persistentYouTubeUrl', newUrl);
+        };
+
+        // Ajouter les écouteurs
+        transcriptUrlInput.addEventListener('input', () => syncUrls(transcriptUrlInput));
+        commentsUrlInput.addEventListener('input', () => syncUrls(commentsUrlInput));
+        // --- Fin de la logique de synchronisation ---
+
+    </script>
+</body>
+</html>
