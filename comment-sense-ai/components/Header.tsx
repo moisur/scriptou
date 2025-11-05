@@ -1,10 +1,15 @@
 import React from 'react';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  openLoginModal: () => void;
+  openSignupModal: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ openLoginModal, openSignupModal }) => {
   return (
     <header className="fixed top-0 left-0 right-0 z-50" style={{ backgroundColor: 'var(--background-card)', borderBottom: '1px solid var(--border-color)' }}>
       <div className="container mx-auto px-6 py-3 flex justify-between items-center">
-        <a href="#" className="flex items-center">
+        <a href="/" className="flex items-center">
           <img src="/Scriptou.png" alt="Scriptou Logo" className="h-10 mr-3"/>
           <span className="text-xl font-bold tracking-tighter" style={{ color: 'var(--text-dark)' }}>
             Scriptou
@@ -16,13 +21,22 @@ const Header: React.FC = () => {
           <a href="#use-cases" className="text-sm font-medium" style={{ color: 'var(--text-medium)' }}>Cas d'Usage</a>
           <a href="#pricing" className="text-sm font-medium" style={{ color: 'var(--text-medium)' }}>Tarifs</a>
         </nav>
-        <a
-          href="#pricing"
-          className="text-white font-semibold text-sm py-2 px-5 rounded-full transition-all duration-300 transform hover:scale-105"
-          style={{ backgroundColor: 'var(--primary-color)' }}
-        >
-          Commencer
-        </a>
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={openLoginModal}
+            className="text-sm font-medium py-2 px-4 rounded-full transition-all duration-300 transform hover:scale-105"
+            style={{ color: 'var(--primary-color)', border: '1px solid var(--primary-color)' }}
+          >
+            Connexion
+          </button>
+          <button
+            onClick={openSignupModal}
+            className="text-white font-semibold text-sm py-2 px-5 rounded-full transition-all duration-300 transform hover:scale-105"
+            style={{ backgroundColor: 'var(--primary-color)' }}
+          >
+            S'inscrire
+          </button>
+        </div>
       </div>
     </header>
   );

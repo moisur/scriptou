@@ -38,7 +38,7 @@ CORS(app)
 
 # --- Configuration de la base de données ---
 app.config['SQLALCHEMY_DATABASE_URI'] = (
-    f"postgresql://{os.environ.get('DB_USER')}:{os.environ.get('DB_PASS')}"
+    f"mysql+pymysql://{os.environ.get('DB_USER')}:{os.environ.get('DB_PASS')}"
     f"@{os.environ.get('DB_HOST')}:{os.environ.get('DB_PORT')}/{os.environ.get('DB_NAME')}"
 )
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -239,9 +239,53 @@ def list_prompts_route():
             
             return jsonify(available_prompts), 200
         else:
-            return jsonify({"error": "Dossier de prompts non trouvé sur le serveur."}),
+            return jsonify({"error": "Dossier de prompts non trouvé sur le serveur."})
     except Exception as e:
-        return jsonify({"error": "Erreur serveur lors du listage des prompts."}),
+import React from 'react';
+
+interface HeaderProps {
+  openLoginModal: () => void;
+  openSignupModal: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ openLoginModal, openSignupModal }) => {
+  return (
+    <header className="fixed top-0 left-0 right-0 z-50" style={{ backgroundColor: 'var(--background-card)', borderBottom: '1px solid var(--border-color)' }}>
+      <div className="container mx-auto px-6 py-3 flex justify-between items-center">
+        <a href="/" className="flex items-center">
+          <img src="/Scriptou.png" alt="Scriptou Logo" className="h-10 mr-3"/>
+          <span className="text-xl font-bold tracking-tighter" style={{ color: 'var(--text-dark)' }}>
+            Scriptou
+          </span>
+        </a>
+        <nav className="hidden md:flex items-center space-x-8">
+          <a href="#features" className="text-sm font-medium" style={{ color: 'var(--text-medium)' }}>Fonctionnalités</a>
+          <a href="#demo" className="text-sm font-medium" style={{ color: 'var(--text-medium)' }}>Démo</a>
+          <a href="#use-cases" className="text-sm font-medium" style={{ color: 'var(--text-medium)' }}>Cas d'Usage</a>
+          <a href="#pricing" className="text-sm font-medium" style={{ color: 'var(--text-medium)' }}>Tarifs</a>
+        </nav>
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={openLoginModal}
+            className="text-sm font-medium py-2 px-4 rounded-full transition-all duration-300 transform hover:scale-105"
+            style={{ color: 'var(--primary-color)', border: '1px solid var(--primary-color)' }}
+          >
+            Connexion
+          </button>
+          <button
+            onClick={openSignupModal}
+            className="text-white font-semibold text-sm py-2 px-5 rounded-full transition-all duration-300 transform hover:scale-105"
+            style={{ backgroundColor: 'var(--primary-color)' }}
+          >
+            S'inscrire
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+};
+
+export default Header;
 
 @app.route('/api/transcript', methods=['POST'])
 def get_transcript_route():
@@ -548,20 +592,20 @@ def call_gemini_route():
 @app.route('/api/analyze_comments', methods=['POST'])
 def analyze_comments_route():
     if not gemini_model:
-        return jsonify({"error": "Le modèle Gemini n'est pas configuré."}),
+        return jsonify({"error": "Le modèle Gemini n'est pas configuré."})
 
     try:
         data = request.get_json()
         if not data:
-            return jsonify({"error": "Requête invalide, JSON attendu."}),
+            return jsonify({"error": "Requête invalide, JSON attendu."})
 
         comments = data.get('comments')
         prompt_filename = data.get('prompt_file')
 
         if not comments or not isinstance(comments, list):
-            return jsonify({"error": "La liste des commentaires est manquante ou invalide."}),
+            return jsonify({"error": "La liste des commentaires est manquante ou invalide."})
         if not prompt_filename:
-            return jsonify({"error": "Le fichier de prompt est manquant."}),
+            return jsonify({"error": "Le fichier de prompt est manquant."})
 
         comments_text = "\n\n".join([f"Auteur: {c.get('author', 'N/A')}\nCommentaire: {c.get('text', '')}" for c in comments])
 
@@ -569,7 +613,7 @@ def analyze_comments_route():
         prompt_file_path = os.path.join(prompt_dir, prompt_filename)
 
         if not os.path.exists(prompt_file_path):
-            return jsonify({"error": f"Fichier prompt '{prompt_filename}' non trouvé."}),
+            return jsonify({"error": f"Fichier prompt '{prompt_filename}' non trouvé."})
         
         with open(prompt_file_path, 'r', encoding='utf-8') as f:
             prompt_template = f.read()
@@ -633,12 +677,12 @@ Le schéma est:
         import json
         try:
             analysis_json = json.loads(response_text)
-            return jsonify({"analysis_result": analysis_json}),
+            return jsonify({"analysis_result": analysis_json})
         except json.JSONDecodeError:
-            return jsonify({"error": "La réponse de l'IA n'était pas un JSON valide."}),
+            return jsonify({"error": "La réponse de l'IA n'était pas un JSON valide."})
 
     except Exception as e:
-        return jsonify({"error": "Erreur interne du serveur lors de l'analyse des commentaires."}),
+        return jsonify({"error": "Erreur interne du serveur lors de l'analyse des commentaires."})
 
 def save_analysis_to_db(themes_data):
     """Sauvegarde les résultats de l'analyse (sentiments, thèmes) dans la base de données."""

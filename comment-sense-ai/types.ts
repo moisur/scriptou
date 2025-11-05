@@ -21,3 +21,14 @@ export interface CommentAnalysisResult {
   summary: Summary;
   analysis: Analysis;
 }
+
+export interface User {
+  id: string;
+  email: string;
+  // Ajoutez d'autres champs utilisateur si nécessaire
+}
+
+export interface AuthResponse {
+  token: string;
+  user: User;
+}

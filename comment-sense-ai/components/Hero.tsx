@@ -5,7 +5,7 @@ const Hero: React.FC = () => {
     <section className="relative text-center py-24" style={{ backgroundColor: 'var(--background-light)' }}>
       <div className="container mx-auto px-4 z-10">
         <div className="inline-block px-3 py-1 rounded-full text-sm mb-6" style={{ backgroundColor: 'rgba(37, 162, 242, 0.1)', color: '#009EFA' }}>
-          Propulsé par Gemini 1.5 Flash
+          Propulsé par Scriptou 2.0
         </div>
         <h1 className="text-5xl md:text-7xl font-extrabold mb-4 leading-tight" style={{ color: '#1A202C' }}>
           Scriptou: Mindmaps et Analyses de<br />
@@ -17,13 +17,13 @@ const Hero: React.FC = () => {
         </p>
         <div className="flex justify-center space-x-4 mb-12">
           <a
-            href="#demo"
+            href="/login"
             className="px-8 py-4 rounded-full font-bold text-white text-lg transition-transform transform hover:scale-105 shadow-lg"
             style={{
               backgroundColor: '#009EFA',
             }}
           >
-            Essayer la Démo
+            Commencer
           </a>
           <a
             href="#how-it-works"

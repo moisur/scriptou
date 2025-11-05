@@ -5,6 +5,10 @@ type IconProps = {
   style?: React.CSSProperties;
 };
 
+export const CheckIcon: React.FC<IconProps> = ({ className, style }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}><path d="M20 6 9 17l-5-5"></path></svg>
+);
+
 export const CheckCircleIcon: React.FC<IconProps> = ({ className, style }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
